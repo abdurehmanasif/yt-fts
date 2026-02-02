@@ -298,18 +298,18 @@ class DownloadHandler:
         return playlist_data
 
     def download_vtts(self) -> None:
-        executor = ThreadPoolExecutor(self.number_of_jobs)
-        futures = []
+        with ThreadPoolExecutor(self.number_of_jobs) as executor:
+            futures = []
 
-        for video_id in self.video_ids:
-            video_url = f"https://www.youtube.com/watch?v={video_id}"
-            future = executor.submit(
-                self.get_vtt, self.tmp_dir, video_url, self.language
-            )
-            futures.append(future)
+            for video_id in self.video_ids:
+                video_url = f"https://www.youtube.com/watch?v={video_id}"
+                future = executor.submit(
+                    self.get_vtt, self.tmp_dir, video_url, self.language
+                )
+                futures.append(future)
 
-        for i in range(len(self.video_ids)):
-            futures[i].result()
+            for future in futures:
+                future.result()
 
     def quiet_progress_hook(self, d: dict) -> None:
         console = self.console
@@ -376,15 +376,15 @@ class DownloadHandler:
                 # Check if it's a 403 error specifically
                 if "403" in error_msg or "Forbidden" in error_msg:
                     self.console.print(
-                        f"[red]403 Forbidden error detected - YouTube is blocking the request[/red]"
+                        "[red]403 Forbidden error detected - YouTube is blocking the request[/red]"
                     )
-                    self.console.print(f"[yellow]Possible causes:[/yellow]")
+                    self.console.print("[yellow]Possible causes:[/yellow]")
                     self.console.print(
-                        f"  - Rate limiting (too many requests too quickly)"
+                        "  - Rate limiting (too many requests too quickly)"
                     )
-                    self.console.print(f"  - Missing or invalid cookies")
-                    self.console.print(f"  - IP address is blocked")
-                    self.console.print(f"  - User-Agent detection")
+                    self.console.print("  - Missing or invalid cookies")
+                    self.console.print("  - IP address is blocked")
+                    self.console.print("  - User-Agent detection")
 
                     if attempt < max_retries - 1:
                         self.console.print(
@@ -398,23 +398,23 @@ class DownloadHandler:
                         self.console.print(
                             f"[red]All retry attempts failed for: {video_url}[/red]"
                         )
-                        self.console.print(f"[yellow]Suggestions:[/yellow]")
+                        self.console.print("[yellow]Suggestions:[/yellow]")
                         self.console.print(
-                            f"  - Try using --cookies-from-browser option"
+                            "  - Try using --cookies-from-browser option"
                         )
                         self.console.print(
-                            f"  - Reduce the number of parallel jobs (-j option)"
+                            "  - Reduce the number of parallel jobs (-j option)"
                         )
                         self.console.print(
-                            f"  - Wait a few minutes before trying again"
+                            "  - Wait a few minutes before trying again"
                         )
                         self.console.print(
-                            f"  - Check if the video is available in your region"
+                            "  - Check if the video is available in your region"
                         )
 
                 elif "429" in error_msg or "Too Many Requests" in error_msg:
                     self.console.print(
-                        f"[red]429 Too Many Requests - Rate limit exceeded[/red]"
+                        "[red]429 Too Many Requests - Rate limit exceeded[/red]"
                     )
                     if attempt < max_retries - 1:
                         wait_time = retry_delay * 5  # Longer wait for rate limits
@@ -430,7 +430,7 @@ class DownloadHandler:
                             f"[red]Rate limit exceeded for: {video_url}[/red]"
                         )
                         self.console.print(
-                            f"[yellow]Try reducing parallel jobs or wait longer[/yellow]"
+                            "[yellow]Try reducing parallel jobs or wait longer[/yellow]"
                         )
 
                 else:
@@ -455,43 +455,43 @@ class DownloadHandler:
             os.path.join(tmp_dir, item) for item in items if item.endswith(".vtt")
         ]
 
-        con = sqlite3.connect(get_db_path())
-        cur = con.cursor()
+        with sqlite3.connect(get_db_path()) as con:
+            cur = con.cursor()
 
-        for vtt in track(file_paths, description="Adding subtitles to database..."):
-            base_name = os.path.basename(vtt)
+            for vtt in track(file_paths, description="Adding subtitles to database..."):
+                base_name = os.path.basename(vtt)
 
-            vid_id = base_name.split(".")[0]
-            vid_url = f"https://youtu.be/{vid_id}"
+                vid_id = base_name.split(".")[0]
+                vid_url = f"https://youtu.be/{vid_id}"
 
-            vid_json_path = os.path.join(os.path.dirname(vtt), f"{vid_id}.info.json")
-
-            with open(vid_json_path, "r", encoding="utf-8", errors="ignore") as f:
-                vid_json = json.load(f)
-
-            vid_title = vid_json["title"]
-            vid_date = get_date(vid_json["upload_date"])
-            channel_id = vid_json["channel_id"]
-
-            add_video(channel_id, vid_id, vid_title, vid_url, vid_date)
-
-            vtt_json = parse_vtt(vtt)
-
-            for sub in vtt_json:
-                start_time = sub["start_time"]
-                stop_time = sub["stop_time"]
-                text = sub["text"]
-                cur.execute(
-                    """
-                            INSERT INTO Subtitles (video_id, start_time, stop_time, text) 
-                            VALUES (?, ?, ?, ?)
-                            """,
-                    (vid_id, start_time, stop_time, text),
+                vid_json_path = os.path.join(
+                    os.path.dirname(vtt), f"{vid_id}.info.json"
                 )
 
-            con.commit()
+                with open(vid_json_path, "r", encoding="utf-8", errors="ignore") as f:
+                    vid_json = json.load(f)
 
-        con.close()
+                vid_title = vid_json["title"]
+                vid_date = get_date(vid_json["upload_date"])
+                channel_id = vid_json["channel_id"]
+
+                add_video(channel_id, vid_id, vid_title, vid_url, vid_date)
+
+                vtt_json = parse_vtt(vtt)
+
+                for sub in vtt_json:
+                    start_time = sub["start_time"]
+                    stop_time = sub["stop_time"]
+                    text = sub["text"]
+                    cur.execute(
+                        """
+                                INSERT INTO Subtitles (video_id, start_time, stop_time, text) 
+                                VALUES (?, ?, ?, ?)
+                                """,
+                        (vid_id, start_time, stop_time, text),
+                    )
+
+                con.commit()
 
     def diagnose_403_errors(
         self, test_url: str = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"

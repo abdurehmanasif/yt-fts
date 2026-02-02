@@ -1,5 +1,4 @@
 import chromadb
-import sys
 from openai import OpenAI
 from yt_fts.get_embeddings import get_embedding
 from yt_fts.config import get_or_make_chroma_path

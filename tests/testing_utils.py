@@ -47,6 +47,5 @@ def fetch_and_unzip_test_db():
 
 
 def get_test_db():
-    conn = sqlite3.connect(f"{CONFIG_DIR}/subtitles.db")
-    curr = conn.cursor()
-    return curr
+    """Returns connection - caller must use with context manager or close manually"""
+    return sqlite3.connect(f"{CONFIG_DIR}/subtitles.db")

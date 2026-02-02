@@ -76,25 +76,24 @@ def add_channel_info(channel_id: str, channel_name: str, channel_url: str) -> No
 def add_video(
     channel_id: str, video_id: str, video_title: str, video_url: str, video_date: str
 ) -> None:
-    conn = sqlite3.connect(get_db_path())
-    cur = conn.cursor()
-    existing_video = cur.execute(
-        "SELECT * FROM Videos WHERE video_id = ?", (video_id,)
-    ).fetchone()
+    with sqlite3.connect(get_db_path()) as conn:
+        cur = conn.cursor()
+        existing_video = cur.execute(
+            "SELECT * FROM Videos WHERE video_id = ?", (video_id,)
+        ).fetchone()
 
-    if existing_video is None:
-        cur.execute(
-            """
-                    INSERT INTO Videos (video_id, video_title, video_url, video_date, channel_id)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-            (video_id, video_title, video_url, video_date, channel_id),
-        )
-        conn.commit()
+        if existing_video is None:
+            cur.execute(
+                """
+                        INSERT INTO Videos (video_id, video_title, video_url, video_date, channel_id)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                (video_id, video_title, video_url, video_date, channel_id),
+            )
+            conn.commit()
 
-    else:
-        print(f"{video_id} Video already exists in the database.")
-    conn.close()
+        else:
+            print(f"{video_id} Video already exists in the database.")
 
 
 def add_subtitle(video_id: str, start_time: str, text: str) -> None:
@@ -141,52 +140,51 @@ def parse_query(query: str) -> str:
 def search_channel(
     channel_id: str, text: str, limit: int | None = None
 ) -> list[dict[str, int | str]]:
-    conn = sqlite3.connect(get_db_path())
-    curr = conn.cursor()
+    with sqlite3.connect(get_db_path()) as conn:
+        curr = conn.cursor()
 
-    fts5_query = parse_query(text)
+        fts5_query = parse_query(text)
 
-    query = """
-        SELECT 
-            s.rowid,
-            s.subtitle_id,
-            s.video_id,
-            s.start_time,
-            s.stop_time,
-            s.text
-        FROM 
-            Subtitles_fts fts
-        JOIN 
-            Subtitles s ON fts.rowid = s.rowid
-        JOIN 
-            Videos v ON s.video_id = v.video_id
-        WHERE 
-            fts.text MATCH ?
-            AND v.channel_id = ? 
-        ORDER BY 
-            rank
-    """
+        query = """
+            SELECT 
+                s.rowid,
+                s.subtitle_id,
+                s.video_id,
+                s.start_time,
+                s.stop_time,
+                s.text
+            FROM 
+                Subtitles_fts fts
+            JOIN 
+                Subtitles s ON fts.rowid = s.rowid
+            JOIN 
+                Videos v ON s.video_id = v.video_id
+            WHERE 
+                fts.text MATCH ?
+                AND v.channel_id = ? 
+            ORDER BY 
+                rank
+        """
 
-    if limit is not None:
-        query += " LIMIT ?"
-        curr.execute(query, (fts5_query, channel_id, limit))
-    else:
-        curr.execute(query, (fts5_query, channel_id))
+        if limit is not None:
+            query += " LIMIT ?"
+            curr.execute(query, (fts5_query, channel_id, limit))
+        else:
+            curr.execute(query, (fts5_query, channel_id))
 
-    res = curr.fetchall()
-    formatted_res = []
-    for row in res:
-        formatted_res.append(
-            {
-                "rowid": row[0],
-                "subtitle_id": row[1],
-                "video_id": row[2],
-                "start_time": row[3],
-                "stop_time": row[4],
-                "text": row[5],
-            }
-        )
-    conn.close()
+        res = curr.fetchall()
+        formatted_res = []
+        for row in res:
+            formatted_res.append(
+                {
+                    "rowid": row[0],
+                    "subtitle_id": row[1],
+                    "video_id": row[2],
+                    "start_time": row[3],
+                    "stop_time": row[4],
+                    "text": row[5],
+                }
+            )
 
     return formatted_res
 
@@ -195,122 +193,113 @@ def search_video(
     video_id: str, text: str, limit: int | None = None
 ) -> list[dict[str, int | str]]:
     try:
-        conn = sqlite3.connect(get_db_path())
-        curr = conn.cursor()
+        with sqlite3.connect(get_db_path()) as conn:
+            curr = conn.cursor()
 
-        fts5_query = parse_query(text)
-        sql = """
-        SELECT 
-            s.rowid,
-            s.subtitle_id,
-            s.video_id,
-            s.start_time,
-            s.stop_time,
-            s.text 
-        FROM
-            Subtitles_fts fts
-        JOIN
-            Subtitles s ON fts.rowid = s.rowid 
-        WHERE
-            s.video_id = ?
-        AND
-            fts.text MATCH ?
-        """
-
-        if limit is not None:
-            sql += " LIMIT ?"
-            curr.execute(sql, (video_id, fts5_query, limit))
-        else:
-            curr.execute(sql, (video_id, fts5_query))
-
-        res = curr.fetchall()
-
-        formatted_res = []
-
-        for row in res:
-            formatted_res.append(
-                {
-                    "rowid": row[0],
-                    "subtitle_id": row[1],
-                    "video_id": row[2],
-                    "start_time": row[3],
-                    "stop_time": row[4],
-                    "text": row[5],
-                }
-            )
-
-        conn.close()
-        return formatted_res
-
-    except Exception as e:
-        print(e)
-        sys.exit(1)
-    finally:
-        conn.close()
-
-
-def search_all(text: str, limit: int | None = None) -> list[dict[str, int | str]]:
-    try:
-        conn = sqlite3.connect(get_db_path())
-        curr = conn.cursor()
-        fts5_query = parse_query(text)
-
-        sql = """
+            fts5_query = parse_query(text)
+            sql = """
             SELECT 
                 s.rowid,
                 s.subtitle_id,
                 s.video_id,
                 s.start_time,
                 s.stop_time,
-                s.text
+                s.text 
             FROM
                 Subtitles_fts fts
             JOIN
-                Subtitles s ON fts.rowid = s.rowid
+                Subtitles s ON fts.rowid = s.rowid 
             WHERE
+                s.video_id = ?
+            AND
                 fts.text MATCH ?
-            ORDER BY
-                rank
-        """
+            """
 
-        if limit is not None:
-            sql += " LIMIT ?"
-            curr.execute(sql, (fts5_query, limit))
-        else:
-            curr.execute(sql, (fts5_query,))
+            if limit is not None:
+                sql += " LIMIT ?"
+                curr.execute(sql, (video_id, fts5_query, limit))
+            else:
+                curr.execute(sql, (video_id, fts5_query))
 
-        res = curr.fetchall()
+            res = curr.fetchall()
 
-        formatted_res = []
+            formatted_res = []
 
-        for row in res:
-            formatted_res.append(
-                {
-                    "rowid": row[0],
-                    "subtitle_id": row[1],
-                    "video_id": row[2],
-                    "start_time": row[3],
-                    "stop_time": row[4],
-                    "text": row[5],
-                }
-            )
-
-        conn.close()
-        return formatted_res
-
-    except Exception as e:
+            for row in res:
+                formatted_res.append(
+                    {
+                        "rowid": row[0],
+                        "subtitle_id": row[1],
+                        "video_id": row[2],
+                        "start_time": row[3],
+                        "stop_time": row[4],
+                        "text": row[5],
+                    }
+                )
+            return formatted_res
+    except sqlite3.Error as e:
         print(e)
         sys.exit(1)
 
-    finally:
-        conn.close()
+
+def search_all(text: str, limit: int | None = None) -> list[dict[str, int | str]]:
+    try:
+        with sqlite3.connect(get_db_path()) as conn:
+            curr = conn.cursor()
+            fts5_query = parse_query(text)
+
+            sql = """
+                SELECT 
+                    s.rowid,
+                    s.subtitle_id,
+                    s.video_id,
+                    s.start_time,
+                    s.stop_time,
+                    s.text
+                FROM
+                    Subtitles_fts fts
+                JOIN
+                    Subtitles s ON fts.rowid = s.rowid
+                WHERE
+                    fts.text MATCH ?
+                ORDER BY
+                    rank
+            """
+
+            if limit is not None:
+                sql += " LIMIT ?"
+                curr.execute(sql, (fts5_query, limit))
+            else:
+                curr.execute(sql, (fts5_query,))
+
+            res = curr.fetchall()
+
+            formatted_res = []
+
+            for row in res:
+                formatted_res.append(
+                    {
+                        "rowid": row[0],
+                        "subtitle_id": row[1],
+                        "video_id": row[2],
+                        "start_time": row[3],
+                        "stop_time": row[4],
+                        "text": row[5],
+                    }
+                )
+
+        return formatted_res
+
+    except sqlite3.Error as e:
+        print(e)
+        sys.exit(1)
 
 
 def get_title_from_db(video_id: str) -> str:
     db = Database(get_db_path())
 
     return db.execute(
-        f"SELECT video_title FROM Videos WHERE video_id = ?", [video_id]
+        "SELECT video_title FROM Videos WHERE video_id = ?", [video_id]
     ).fetchone()[0]
 
 
@@ -318,7 +307,7 @@ def get_metadata_from_db(video_id: str) -> dict[str, any]:
     db = Database(get_db_path())
 
     metadata = db.execute_returning_dicts(
-        f"SELECT * FROM Videos WHERE video_id = ?", [video_id]
+        "SELECT * FROM Videos WHERE video_id = ?", [video_id]
     )[0]
     metadata["video_date"] = get_date(metadata["video_date"])
     return metadata
@@ -328,7 +317,7 @@ def get_channel_name_from_id(channel_id: str) -> str:
     db = Database(get_db_path())
 
     return db.execute(
-        f"SELECT channel_name FROM Channels WHERE channel_id = ?", [channel_id]
+        "SELECT channel_name FROM Channels WHERE channel_id = ?", [channel_id]
     ).fetchone()[0]
 
 
@@ -336,7 +325,7 @@ def get_channel_name_from_video_id(video_id: str) -> str:
     db = Database(get_db_path())
 
     return db.execute(
-        f"SELECT channel_name FROM Channels WHERE channel_id = (SELECT channel_id FROM Videos WHERE video_id = ?)",
+        "SELECT channel_name FROM Channels WHERE channel_id = (SELECT channel_id FROM Videos WHERE video_id = ?)",
         [video_id],
     ).fetchone()[0]
 
@@ -348,23 +337,24 @@ def delete_channel(channel_id: str) -> None:
     if check_ss_enabled(channel_id):
         delete_channel_from_chroma(channel_id)
 
-    conn = sqlite3.connect(get_db_path())
-    cur = conn.cursor()
+    with sqlite3.connect(get_db_path()) as conn:
+        cur = conn.cursor()
 
-    cur.execute("DELETE FROM Channels WHERE channel_id = ?", (channel_id,))
+        cur.execute("DELETE FROM Channels WHERE channel_id = ?", (channel_id,))
 
-    # make sure to delete all subtitles and embeddings before videos
-    cur.execute(
-        "DELETE FROM Subtitles WHERE video_id IN (SELECT video_id FROM Videos WHERE channel_id = ?)",
-        (channel_id,),
-    )
+        # make sure to delete all subtitles and embeddings before videos
+        cur.execute(
+            "DELETE FROM Subtitles WHERE video_id IN (SELECT video_id FROM Videos WHERE channel_id = ?)",
+            (channel_id,),
+        )
 
-    cur.execute("DELETE FROM Videos WHERE channel_id = ?", (channel_id,))
+        cur.execute("DELETE FROM Videos WHERE channel_id = ?", (channel_id,))
 
-    cur.execute("DELETE FROM SemanticSearchEnabled WHERE channel_id = ?", (channel_id,))
+        cur.execute(
+            "DELETE FROM SemanticSearchEnabled WHERE channel_id = ?", (channel_id,)
+        )
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 def delete_channel_from_chroma(channel_id: str) -> None:
@@ -379,7 +369,7 @@ def get_channel_id_from_rowid(rowid: str | int) -> str | None:
     db = Database(get_db_path())
 
     res = db.execute(
-        f"SELECT channel_id FROM Channels WHERE ROWID = ?", [rowid]
+        "SELECT channel_id FROM Channels WHERE ROWID = ?", [rowid]
     ).fetchone()
 
     if res is None:
@@ -392,7 +382,7 @@ def get_channel_id_from_name(channel_name: str) -> str | None:
     db = Database(get_db_path())
 
     res = db.execute(
-        f"SELECT channel_id FROM Channels WHERE channel_name = ?", [channel_name]
+        "SELECT channel_id FROM Channels WHERE channel_name = ?", [channel_name]
     ).fetchall()
 
     console = Console()
@@ -403,7 +393,7 @@ def get_channel_id_from_name(channel_name: str) -> str | None:
         table.add_column("channel_url")
 
         channels = db.execute(
-            f"SELECT ROWID, channel_name, channel_url FROM Channels WHERE channel_name = ?",
+            "SELECT ROWID, channel_name, channel_url FROM Channels WHERE channel_name = ?",
             [channel_name],
         ).fetchall()
         for channel in channels:
@@ -422,7 +412,7 @@ def get_channel_list_by_id(channel_id: str) -> list[tuple[int, str, str]]:
     db = Database(get_db_path())
 
     return db.execute(
-        f"SELECT ROWID, channel_name, channel_url FROM Channels WHERE channel_id = ?",
+        "SELECT ROWID, channel_name, channel_url FROM Channels WHERE channel_id = ?",
         [channel_id],
     ).fetchall()
 
@@ -435,7 +425,7 @@ def check_if_channel_exists(channel_id: str) -> bool:
     db = Database(get_db_path())
 
     res = db.execute(
-        f"SELECT channel_id FROM Channels WHERE channel_id = ?", [channel_id]
+        "SELECT channel_id FROM Channels WHERE channel_id = ?", [channel_id]
     ).fetchall()
     if len(res) > 0:
         return True
@@ -447,7 +437,7 @@ def get_num_vids(channel_id: str) -> int:
     db = Database(get_db_path())
 
     return db.execute(
-        f"SELECT COUNT(*) FROM Videos WHERE channel_id = ?", [channel_id]
+        "SELECT COUNT(*) FROM Videos WHERE channel_id = ?", [channel_id]
     ).fetchone()[0]
 
 
@@ -455,7 +445,7 @@ def get_vid_ids_by_channel_id(channel_id: str) -> list[tuple[str]]:
     db = Database(get_db_path())
 
     return db.execute(
-        f"SELECT video_id FROM Videos WHERE channel_id = ?", [channel_id]
+        "SELECT video_id FROM Videos WHERE channel_id = ?", [channel_id]
     ).fetchall()
 
 
@@ -508,7 +498,7 @@ def get_transcript_by_video_id(video_id: str) -> list[tuple[str]]:
     db = Database(get_db_path())
 
     return db.execute(
-        f"SELECT text FROM Subtitles WHERE video_id = ?", [video_id]
+        "SELECT text FROM Subtitles WHERE video_id = ?", [video_id]
     ).fetchall()
 
 
@@ -516,7 +506,7 @@ def get_subs_by_video_id(video_id: str) -> list[tuple[str, str, str]]:
     db = Database(get_db_path())
 
     return db.execute(
-        f"SELECT start_time, stop_time, text FROM Subtitles WHERE video_id = ?",
+        "SELECT start_time, stop_time, text FROM Subtitles WHERE video_id = ?",
         [video_id],
     ).fetchall()
 

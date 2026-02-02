@@ -28,12 +28,15 @@ def time_to_secs(time_str: str) -> int:
     converts timestamp to seconds youtube urls. Subtracts 3 seconds to give a buffer.
     """
     time_rex = re.search(r"^(\d\d):(\d\d):(\d\d)", time_str)
+    if time_rex is None:
+        raise ValueError(f"Invalid timestamp format: {time_str}. Expected HH:MM:SS")
+
     hours = int(time_rex.group(1)) * 3600
     mins = int(time_rex.group(2)) * 60
     secs = int(time_rex.group(3))
-    total_secs = hours + mins + secs
+    total_secs = hours + mins + secs - 3
 
-    return total_secs - 3
+    return max(0, total_secs)  # Ensure non-negative
 
 
 def parse_vtt(vtt_path: str) -> list[dict[str, str]]:
@@ -182,46 +185,42 @@ def get_date(date_string: str) -> datetime.date:
 def check_ss_enabled(channel_id: str | None = None) -> bool:
     from yt_fts.config import get_db_path
 
-    con = sqlite3.connect(get_db_path())
-    cur = con.cursor()
+    with sqlite3.connect(get_db_path()) as con:
+        cur = con.cursor()
 
-    if channel_id is None:
-        cur.execute(""" 
-            SELECT channel_id FROM SemanticSearchEnabled 
-            """)
-    else:
-        cur.execute(
-            """ 
-            SELECT channel_id FROM SemanticSearchEnabled 
-            WHERE channel_id = ?
-            """,
-            [channel_id],
-        )
+        if channel_id is None:
+            cur.execute(""" 
+                SELECT channel_id FROM SemanticSearchEnabled 
+                """)
+        else:
+            cur.execute(
+                """ 
+                SELECT channel_id FROM SemanticSearchEnabled 
+                WHERE channel_id = ?
+                """,
+                [channel_id],
+            )
 
-    res = cur.fetchone()
-    if res is None:
-        return False
-    else:
-        return True
+        res = cur.fetchone()
+        return res is not None
 
-    # enable semantic search for channel
+
+# enable semantic search for channel
 
 
 def enable_ss(channel_id: str) -> None:
     from yt_fts.config import get_db_path
 
-    con = sqlite3.connect(get_db_path())
-    cur = con.cursor()
-
-    cur.execute(
-        """ 
-        INSERT INTO SemanticSearchEnabled (channel_id)
-        VALUES (?)
-        """,
-        [channel_id],
-    )
-    con.commit()
-    con.close()
+    with sqlite3.connect(get_db_path()) as con:
+        cur = con.cursor()
+        cur.execute(
+            """ 
+            INSERT INTO SemanticSearchEnabled (channel_id)
+            VALUES (?)
+            """,
+            [channel_id],
+        )
+        con.commit()
 
 
 def bold_query_matches(text: str, query: str) -> str:

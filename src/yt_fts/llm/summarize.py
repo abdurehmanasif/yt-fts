@@ -159,61 +159,53 @@ class SummarizeHandler:
     def get_transcript_from_database(self, video_id: str) -> str:
         console = self.console
         try:
-            conn = sqlite3.connect(get_db_path())
-            curr = conn.cursor()
-            curr.execute(
-                """
-                SELECT 
-                    start_time, text
-                FROM
-                    Subtitles
-                WHERE
-                    video_id = ?
-                """,
-                (video_id,),
-            )
-            res = curr.fetchall()
-            transcript = ""
-            for row in res:
-                start_time, text = row
-                text = text.strip()
-                if len(text) == 0:
-                    continue
-                transcript += f"{start_time[:-4]}: {text}\n"
-            conn.close()
-            return transcript
+            with sqlite3.connect(get_db_path()) as conn:
+                curr = conn.cursor()
+                curr.execute(
+                    """
+                    SELECT 
+                        start_time, text
+                    FROM
+                        Subtitles
+                    WHERE
+                        video_id = ?
+                    """,
+                    (video_id,),
+                )
+                res = curr.fetchall()
+                transcript = ""
+                for row in res:
+                    start_time, text = row
+                    text = text.strip()
+                    if len(text) == 0:
+                        continue
+                    transcript += f"{start_time[:-4]}: {text}\n"
+                return transcript
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
             sys.exit(1)
-        finally:
-            conn.close()
 
     def video_in_database(self, video_id: str) -> bool:
         console = self.console
         try:
-            conn = sqlite3.connect(get_db_path())
-            curr = conn.cursor()
-            curr.execute(
-                """
-                SELECT 
-                    count(*)
-                FROM
-                    Videos
-                WHERE
-                    video_id = ?
-                """,
-                (video_id,),
-            )
-            count = curr.fetchone()[0]
-            conn.close()
-            if count > 0:
-                return True
-            return False
+            with sqlite3.connect(get_db_path()) as conn:
+                curr = conn.cursor()
+                curr.execute(
+                    """
+                    SELECT 
+                        count(*)
+                    FROM
+                        Videos
+                    WHERE
+                        video_id = ?
+                    """,
+                    (video_id,),
+                )
+                count = curr.fetchone()[0]
+                return count > 0
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
             sys.exit(1)
-        finally:
-            conn.close()
 
     def get_video_id_from_url(self, video_url: str) -> str:
         console = self.console

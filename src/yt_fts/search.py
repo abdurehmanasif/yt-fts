@@ -57,7 +57,7 @@ class SearchHandler:
 
         if len(self.res) == 0:
             console.print(
-                f"[yellow]No matches found[/yellow]\n"
+                "[yellow]No matches found[/yellow]\n"
                 "- Try shortening the search to specific words\n"
                 "- Try using the wildcard operator [bold]*[/bold] to search for partial words\n"
                 "- Try using the [bold]OR[/bold] operator to search for multiple words\n"

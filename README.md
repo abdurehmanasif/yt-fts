@@ -17,9 +17,27 @@ It also supports semantic search via the [OpenAI embeddings API](https://beta.op
 
 https://github.com/NotJoeMartinez/yt-fts/assets/39905973/6ffd8962-d060-490f-9e73-9ab179402f14
 
-## Installation 
+## Installation
 
-pip 
+### Using uv (Recommended)
+
+[uv](https://github.com/astral-sh/uv) is a fast Python package manager. If you don't have it installed:
+
+```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install yt-fts
+uv tool install yt-fts
+```
+
+Or install in a project:
+
+```bash
+uv add yt-fts
+```
+
+### Using pip
 
 ```bash
 pip install yt-fts
@@ -322,9 +340,46 @@ yt-fts update --channel "3Blue1Brown"
 
 **Export all of a channel's transcript:**
 
-This command will create a directory in current working directory with the YouTube 
+This command will create a directory in current working directory with the YouTube
 channel id of the specified channel.
 ```bash
 # Export to vtt
 yt-fts export --channel "[id/name]" --format "[vtt/txt]"
+```
+
+## Development
+
+### Setup with uv (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/NotJoeMartinez/yt-fts.git
+cd yt-fts
+
+# Create a virtual environment and install dependencies
+uv sync
+
+# Activate the virtual environment
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Run the CLI
+yt-fts --help
+```
+
+### Setup with pip
+
+```bash
+# Clone the repository
+git clone https://github.com/NotJoeMartinez/yt-fts.git
+cd yt-fts
+
+# Create a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install in editable mode
+pip install -e .
+
+# Run the CLI
+yt-fts --help
 ```

@@ -1,10 +1,8 @@
 import pytest
-import sqlite3
 import os
 import shutil
-import subprocess
 from click.testing import CliRunner
-from yt_fts.yt_fts import download, cli
+from yt_fts.yt_fts import cli
 from testing_utils import fetch_and_unzip_test_db
 
 CONFIG_DIR = os.path.expanduser("~/.config/yt-fts")
