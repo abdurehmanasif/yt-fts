@@ -122,10 +122,13 @@ def check_ss_enabled(channel_id: str | None = None) -> bool:
             SELECT channel_id FROM SemanticSearchEnabled 
             """)
     else:
-        cur.execute(""" 
+        cur.execute(
+            """ 
             SELECT channel_id FROM SemanticSearchEnabled 
             WHERE channel_id = ?
-            """, [channel_id])
+            """,
+            [channel_id],
+        )
 
     res = cur.fetchone()
     if res is None:

@@ -15,14 +15,16 @@ from ..config import get_chroma_client
 from ..db_utils import (
     get_channel_id_from_input,
     get_channel_name_from_video_id,
-    get_title_from_db
+    get_title_from_db,
 )
 
 
 class LLMHandler:
     def __init__(self, api_key: str, channel: str) -> None:
         self.model_config = get_model_config(api_key)
-        self.openai_client = OpenAI(api_key=api_key, base_url=self.model_config['base_url'])
+        self.openai_client = OpenAI(
+            api_key=api_key, base_url=self.model_config["base_url"]
+        )
         self.channel_id = get_channel_id_from_input(channel)
         self.chroma_client = get_chroma_client()
         self.console = Console()
@@ -51,16 +53,21 @@ class LLMHandler:
             self.console.print(Text(wrapped_content, style="bold blue"))
 
     def wrap_text(self, text: str) -> str:
-        lines = text.split('\n')
+        lines = text.split("\n")
         wrapped_lines = []
 
         for line in lines:
             # If the line is a code block, don't wrap it
-            if line.strip().startswith('```') or line.strip().startswith('`'):
+            if line.strip().startswith("```") or line.strip().startswith("`"):
                 wrapped_lines.append(line)
             else:
                 # Wrap the line
-                wrapped = textwrap.wrap(line, width=self.max_width, break_long_words=False, replace_whitespace=False)
+                wrapped = textwrap.wrap(
+                    line,
+                    width=self.max_width,
+                    break_long_words=False,
+                    replace_whitespace=False,
+                )
                 wrapped_lines.extend(wrapped)
 
         # Join the wrapped lines back together
@@ -81,21 +88,21 @@ class LLMHandler:
 
             response_text = self.get_completion(messages)
 
-
             if response_text.lower().startswith("i don't know"):
                 expanded_query = self.get_expand_context_query(messages)
-                self.console.print(f"Expanding context with query: [italic]{expanded_query}[/italic]")
+                self.console.print(
+                    f"Expanding context with query: [italic]{expanded_query}[/italic]"
+                )
                 expanded_context = self.create_context(expanded_query)
-                messages.append({
-                    "role": "user",
-                    "content": f"Okay here is some more context:\n---\n\n{expanded_context}\n\n---"
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": f"Okay here is some more context:\n---\n\n{expanded_context}\n\n---",
+                    }
+                )
                 response_text = self.get_completion(messages)
 
-            messages.append({
-                "role": "assistant",
-                "content": response_text
-            })
+            messages.append({"role": "assistant", "content": response_text})
             return messages
 
         except Exception as e:
@@ -105,20 +112,21 @@ class LLMHandler:
         try:
             response_text = self.get_completion(messages)
 
-            if response_text.lower().startswith("i don't know"): 
+            if response_text.lower().startswith("i don't know"):
                 expanded_query = self.get_expand_context_query(messages)
-                self.console.print(f"Expanding context with query: [italic]{expanded_query}[/italic]")
+                self.console.print(
+                    f"Expanding context with query: [italic]{expanded_query}[/italic]"
+                )
                 expanded_context = self.create_context(expanded_query)
-                messages.append({
-                    "role": "user",
-                    "content": f"Okay here is some more context:\n---\n\n{expanded_context}\n\n---"
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": f"Okay here is some more context:\n---\n\n{expanded_context}\n\n---",
+                    }
+                )
                 response_text = self.get_completion(messages)
 
-            messages.append({
-                "role": "assistant",
-                "content": response_text
-            })
+            messages.append({"role": "assistant", "content": response_text})
             return messages
 
         except Exception as e:
@@ -133,8 +141,10 @@ class LLMHandler:
         collection = self.chroma_client.get_collection(name="subEmbeddings")
 
         embeddings_handler = EmbeddingsHandler()
-        search_embedding = next(embeddings_handler.get_embedding(
-            [text], self.model_config['embedding_model'], self.openai_client)
+        search_embedding = next(
+            embeddings_handler.get_embedding(
+                [text], self.model_config["embedding_model"], self.openai_client
+            )
         )
         scope_options = {"channel_id": self.channel_id}
 
@@ -196,14 +206,16 @@ class LLMHandler:
     def get_completion(self, messages: list) -> str:
         try:
             response = self.openai_client.chat.completions.create(
-                model=self.model_config['chat_model'],
+                model=self.model_config["chat_model"],
                 messages=messages,
                 temperature=0.5,
                 max_tokens=2000,
                 top_p=1,
-                frequency_penalty=0 if self.model_config['name'] == "OPENAI" else NotGiven(),
+                frequency_penalty=0
+                if self.model_config["name"] == "OPENAI"
+                else NotGiven(),
                 presence_penalty=0,
-                stop=None if self.model_config['name'] == "OPENAI" else NotGiven(),
+                stop=None if self.model_config["name"] == "OPENAI" else NotGiven(),
             )
             return response.choices[0].message.content
 

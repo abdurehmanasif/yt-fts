@@ -6,7 +6,7 @@ from click.testing import CliRunner
 from yt_fts.yt_fts import download, cli
 from testing_utils import fetch_and_unzip_test_db, get_test_db
 
-CONFIG_DIR = os.path.expanduser('~/.config/yt-fts')
+CONFIG_DIR = os.path.expanduser("~/.config/yt-fts")
 
 
 @pytest.fixture(scope="session")
@@ -16,20 +16,15 @@ def runner():
 
 def reset_testing_env():
     if os.path.exists(CONFIG_DIR):
-        if os.environ.get('YT_FTS_TEST_RESET', 'true').lower() == 'true':
+        if os.environ.get("YT_FTS_TEST_RESET", "true").lower() == "true":
             shutil.rmtree(CONFIG_DIR)
             fetch_and_unzip_test_db()
         else:
-            print('running tests with existing db')
+            print("running tests with existing db")
 
 
 def test_global_search(runner, capsys):
-    result = runner.invoke(cli, [
-        'search',
-        'guilt',
-        '-l',
-        '99'
-    ])
+    result = runner.invoke(cli, ["search", "guilt", "-l", "99"])
 
     assert result.exit_code == 0
 
@@ -43,14 +38,7 @@ def test_global_search(runner, capsys):
 
 
 def test_channel_search(runner, capsys):
-    result = runner.invoke(cli, [
-        'search',
-        '-c',
-        '1',
-        'criminal',
-        '-l',
-        '99'
-    ])
+    result = runner.invoke(cli, ["search", "-c", "1", "criminal", "-l", "99"])
 
     assert result.exit_code == 0
 

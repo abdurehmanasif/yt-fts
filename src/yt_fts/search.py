@@ -20,15 +20,15 @@ from .db_utils import (
 
 
 class SearchHandler:
-    def __init__(self,
-                 scope: str = 'all',
-                 channel: str | None = None,
-                 video_id: str | None = None,
-                 export: bool = False,
-                 limit: int | None = None,
-                 openai_client: OpenAI | None = None
-                 ) -> None:
-
+    def __init__(
+        self,
+        scope: str = "all",
+        channel: str | None = None,
+        video_id: str | None = None,
+        export: bool = False,
+        limit: int | None = None,
+        openai_client: OpenAI | None = None,
+    ) -> None:
         self.console = Console()
         self.scope = scope
         self.channel = channel
@@ -36,38 +36,41 @@ class SearchHandler:
         self.export = export
         self.limit = limit
         self.channel_id: str | None = None
-        self.query = ''
+        self.query = ""
         self.response = []
         self.openai_client = openai_client
         self.max_width = 80
 
     def full_text_search(self, query: str) -> None:
-
         console = self.console
         self.query = query
 
-        if self.scope == 'all':
+        if self.scope == "all":
             self.res = search_all(query, self.limit)
 
-        if self.scope == 'channel':
+        if self.scope == "channel":
             self.channel_id = get_channel_id_from_input(self.channel)
             self.res = search_channel(self.channel_id, self.query, self.limit)
 
-        if self.scope == 'video':
+        if self.scope == "video":
             self.res = search_video(self.video_id, self.query, self.limit)
 
         if len(self.res) == 0:
-            console.print(f"[yellow]No matches found[/yellow]\n"
-                          "- Try shortening the search to specific words\n"
-                          "- Try using the wildcard operator [bold]*[/bold] to search for partial words\n"
-                          "- Try using the [bold]OR[/bold] operator to search for multiple words\n"
-                          "   - EX: \"foo OR bar\"")
+            console.print(
+                f"[yellow]No matches found[/yellow]\n"
+                "- Try shortening the search to specific words\n"
+                "- Try using the wildcard operator [bold]*[/bold] to search for partial words\n"
+                "- Try using the [bold]OR[/bold] operator to search for multiple words\n"
+                '   - EX: "foo OR bar"'
+            )
             sys.exit(1)
 
         self.print_fts_res()
         if self.export:
             export_handler = ExportHandler()
-            export_handler.export_fts(self.query, self.scope, self.channel, self.video_id)
+            export_handler.export_fts(
+                self.query, self.scope, self.channel, self.video_id
+            )
 
         console.print(f"Query '{self.query}' ")
         console.print(f"Scope: {self.scope}")
@@ -87,9 +90,11 @@ class SearchHandler:
         collection = chroma_client.get_collection(name="subEmbeddings")
 
         embeddings_handler = EmbeddingsHandler()
-        openai_client = OpenAI(api_key=model['api_key'], base_url=model['base_url'])
-        search_embedding = next(embeddings_handler.get_embedding(
-            [query], model['embedding_model'], openai_client)
+        openai_client = OpenAI(api_key=model["api_key"], base_url=model["base_url"])
+        search_embedding = next(
+            embeddings_handler.get_embedding(
+                [query], model["embedding_model"], openai_client
+            )
         )
         chroma_res = collection.query(
             query_embeddings=[search_embedding],
@@ -170,13 +175,15 @@ class SearchHandler:
             quote_data = {
                 "quote": quote["subs"],
                 "time_stamp": quote["time_stamp"],
-                "link": quote["link"]
+                "link": quote["link"],
             }
             if channel_name not in fts_dict:
                 fts_dict[channel_name] = {}
             if (video_name, video_date) not in fts_dict[channel_name]:
                 fts_dict[channel_name][(video_name, video_date, video_id)] = []
-            fts_dict[channel_name][(video_name, video_date, video_id)].append(quote_data)
+            fts_dict[channel_name][(video_name, video_date, video_id)].append(
+                quote_data
+            )
 
         # Sort the list by the total number of quotes in each channel
         channel_list = list(fts_dict.items())
@@ -191,25 +198,31 @@ class SearchHandler:
             video_list.sort(key=lambda x: len(x[1]))
 
             for (video_name, video_date, video_id), quotes in video_list:
-                console.print(f"{video_id} ({video_date}) \"[bold][blue]{video_name}[/blue][/bold]\"")
+                console.print(
+                    f'{video_id} ({video_date}) "[bold][blue]{video_name}[/blue][/bold]"'
+                )
                 console.print("")
 
                 # Sort the quotes by timestamp
-                quotes.sort(key=lambda x: x['time_stamp'])
+                quotes.sort(key=lambda x: x["time_stamp"])
 
                 for quote in quotes:
                     link = quote["link"]
                     time_stamp = quote["time_stamp"]
                     words = quote["quote"]
-                    console.print(f"       [grey62][link={link}]{time_stamp}[/link][/grey62] -> "
-                                  f"[italic][white]\"{words}\"[/white][/italic]")
+                    console.print(
+                        f"       [grey62][link={link}]{time_stamp}[/link][/grey62] -> "
+                        f'[italic][white]"{words}"[/white][/italic]'
+                    )
                 console.print("")
 
         num_matches = len(res)
         num_channels = len(set(channel_names))
         num_videos = len(set([quote["video_id"] for quote in res]))
 
-        summary_str = f"Found [bold]{num_matches}[/bold] matches in [bold]{num_videos}[/bold] "
+        summary_str = (
+            f"Found [bold]{num_matches}[/bold] matches in [bold]{num_videos}[/bold] "
+        )
         summary_str += f"videos from [bold]{num_channels}[/bold] channel"
 
         if num_channels > 1:
@@ -236,7 +249,9 @@ class SearchHandler:
             channel_name = match["channel_name"]
             channel_names.append(channel_name)
 
-            console.print(f"[magenta][italic]\"[link={link}]{text}[/link]\"[/italic][/magenta]\n")
+            console.print(
+                f'[magenta][italic]"[link={link}]{text}[/link]"[/italic][/magenta]\n'
+            )
             console.print(f"    Distance: {distance}", style="none")
             console.print(f"    Channel: {channel_name} - ({channel_id})", style="none")
             console.print(f"    Title: {title}")
@@ -250,7 +265,9 @@ class SearchHandler:
         num_videos = len(set([quote["video_id"] for quote in res]))
 
         summary_str = f"Found [bold]{num_matches}[/bold] matches in "
-        summary_str += f"[bold]{num_videos}[/bold] videos from [bold]{num_channels}[/bold] channel"
+        summary_str += (
+            f"[bold]{num_videos}[/bold] videos from [bold]{num_channels}[/bold] channel"
+        )
 
         if num_channels > 1:
             summary_str += "s"
@@ -258,18 +275,22 @@ class SearchHandler:
         console.print(summary_str)
 
     def wrap_text(self, text: str) -> str:
-        lines = text.split('\n')
+        lines = text.split("\n")
         wrapped_lines = []
 
         for line in lines:
             # If the line is a code block, don't wrap it
-            if line.strip().startswith('```') or line.strip().startswith('`'):
+            if line.strip().startswith("```") or line.strip().startswith("`"):
                 wrapped_lines.append(line)
             else:
                 # Wrap the line
-                wrapped = textwrap.wrap(line, width=self.max_width, break_long_words=False, replace_whitespace=False)
+                wrapped = textwrap.wrap(
+                    line,
+                    width=self.max_width,
+                    break_long_words=False,
+                    replace_whitespace=False,
+                )
                 wrapped_lines.extend(wrapped)
 
         # Join the wrapped lines back together
         return "  \n".join(wrapped_lines)
- 

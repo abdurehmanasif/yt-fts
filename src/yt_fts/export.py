@@ -14,12 +14,14 @@ from .db_utils import (
     get_channel_id_from_input,
     get_vid_ids_by_channel_id,
     get_subs_by_video_id,
-    get_channel_name_from_id
+    get_channel_name_from_id,
 )
 
 
 class ExportHandler:
-    def __init__(self, scope: str ="channel", format: str ="txt", channel: str | None = None) -> None:
+    def __init__(
+        self, scope: str = "channel", format: str = "txt", channel: str | None = None
+    ) -> None:
         self.console = Console()
         self.format = format
         self.scope = scope
@@ -31,13 +33,11 @@ class ExportHandler:
             self.channel_id = None
             self.channel_name = None
 
-        
     def export(self) -> None:
         console = self.console
         output_dir = None
 
         with console.status(f"[bold green]Exporting {self.channel_name}...") as status:
-
             if self.format == "txt":
                 output_dir = self.export_channel_to_txt(self.channel_id)
             if self.format == "vtt":
@@ -46,9 +46,13 @@ class ExportHandler:
         if output_dir is not None:
             console.print(f"Exported to [green][bold]{output_dir}[/bold][/green]")
 
-
-
-    def export_fts(self, text: str, scope: str, channel_id: str | None = None, video_id: str | None = None) -> None:
+    def export_fts(
+        self,
+        text: str,
+        scope: str,
+        channel_id: str | None = None,
+        video_id: str | None = None,
+    ) -> None:
         """
         Calls search functions and exports the results to a csv file
         """
@@ -71,9 +75,11 @@ class ExportHandler:
             show_message("no_matches_found")
             return None
 
-        with open(file_name, 'w', newline='') as csvfile:
+        with open(file_name, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['Channel Name', 'Video Title', 'Date', 'Quote', 'Time Stamp', 'Link'])
+            writer.writerow(
+                ["Channel Name", "Video Title", "Date", "Quote", "Time Stamp", "Link"]
+            )
 
             for quote in res:
                 video_id = quote["video_id"]
@@ -83,19 +89,21 @@ class ExportHandler:
                 subs = quote["text"]
                 time = time_to_secs(time_stamp)
 
-                writer.writerow([
-                    channel_name,
-                    metadata['video_title'],
-                    metadata['video_date'],
-                    subs.strip(),
-                    time_stamp,
-                    f"https://youtu.be/{video_id}?t={time}"
-                ])
+                writer.writerow(
+                    [
+                        channel_name,
+                        metadata["video_title"],
+                        metadata["video_date"],
+                        subs.strip(),
+                        time_stamp,
+                        f"https://youtu.be/{video_id}?t={time}",
+                    ]
+                )
 
-
-        console.print(f"[bold]{len(res)}[/bold] matches found for text: \"[italic]{text}[/italic]\"")
+        console.print(
+            f'[bold]{len(res)}[/bold] matches found for text: "[italic]{text}[/italic]"'
+        )
         console.print(f"Exported to [green][bold]{file_name}[/bold][/green]")
-
 
     def export_vector_search(self, res: list, search: str, scope: str) -> None:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -109,9 +117,11 @@ class ExportHandler:
             channel_id = res[0]["channel_id"]
             file_name = f"channel_{channel_id}_{timestamp}.csv"
 
-        with open(file_name, 'w', newline='') as csvfile:
+        with open(file_name, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['Channel Name', 'Video Title', 'Quote', 'Time Stamp', 'Link'])
+            writer.writerow(
+                ["Channel Name", "Video Title", "Quote", "Time Stamp", "Link"]
+            )
 
             for quote in res:
                 channel_name = quote["channel_name"]
@@ -120,13 +130,16 @@ class ExportHandler:
                 subs = quote["subs"]
                 link = quote["link"]
 
-                writer.writerow([channel_name, video_title, subs.strip(), time_stamp, link])
+                writer.writerow(
+                    [channel_name, video_title, subs.strip(), time_stamp, link]
+                )
 
         console = Console()
 
-        console.print(f"[bold]{len(res)}[/bold] matches found for text: \"[italic]{search}[/italic]\"")
+        console.print(
+            f'[bold]{len(res)}[/bold] matches found for text: "[italic]{search}[/italic]"'
+        )
         console.print(f"Exported to [green][bold]{file_name}[/bold][/green]")
-
 
     def export_channel_to_txt(self, channel_id: str) -> str | None:
         console = self.console
@@ -136,7 +149,9 @@ class ExportHandler:
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
         else:
-            console.print(f"[red]Erorr:[/red] Directory [yellow]{output_dir}[/yellow] already exists")
+            console.print(
+                f"[red]Erorr:[/red] Directory [yellow]{output_dir}[/yellow] already exists"
+            )
             return None
 
         vid_ids = get_vid_ids_by_channel_id(channel_id)
@@ -152,7 +167,6 @@ class ExportHandler:
 
         return output_dir
 
-
     def export_channel_to_vtt(self, channel_id: str) -> str | None:
         console = self.console
 
@@ -160,7 +174,9 @@ class ExportHandler:
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
         else:
-            console.print(f"[red]Erorr:[/red] Directory [yellow]{output_dir}[/yellow] already exists")
+            console.print(
+                f"[red]Erorr:[/red] Directory [yellow]{output_dir}[/yellow] already exists"
+            )
             return None
 
         vid_ids = get_vid_ids_by_channel_id(channel_id)
