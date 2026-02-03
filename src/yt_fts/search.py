@@ -77,7 +77,7 @@ class SearchHandler:
         if self.export:
             export_handler = ExportHandler()
             export_handler.export_fts(
-                self.query, self.scope, self.channel, self.video_id
+                self.res, self.query, self.scope, self.channel, self.video_id
             )
 
         console.print(f"Query '{self.query}' ")

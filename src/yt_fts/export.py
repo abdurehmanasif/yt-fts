@@ -6,9 +6,6 @@ from rich.console import Console
 
 from .utils import time_to_secs, show_message
 from .db_utils import (
-    search_channel,
-    search_video,
-    search_all,
     get_channel_name_from_video_id,
     get_metadata_from_db,
     get_channel_id_from_input,
@@ -48,32 +45,31 @@ class ExportHandler:
 
     def export_fts(
         self,
+        res: list,
         text: str,
         scope: str,
         channel_id: str | None = None,
         video_id: str | None = None,
     ) -> None:
         """
-        Calls search functions and exports the results to a csv file
+        Exports pre-filtered search results to a csv file.
         """
         console = self.console
+
+        if len(res) == 0:
+            show_message("no_matches_found")
+            return None
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
         if scope == "all":
             file_name = f"all_{timestamp}.csv"
-            res = search_all(text)
         if scope == "video":
             file_name = f"video_{video_id}_{timestamp}.csv"
-            res = search_video(video_id, text)
         if scope == "channel":
-            channel_id = get_channel_id_from_input(channel_id)
+            if channel_id:
+                channel_id = get_channel_id_from_input(channel_id)
             file_name = f"channel_{channel_id}_{timestamp}.csv"
-            res = search_channel(channel_id, text)
-
-        if len(res) == 0:
-            show_message("no_matches_found")
-            return None
 
         with open(file_name, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
