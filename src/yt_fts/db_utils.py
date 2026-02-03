@@ -1,6 +1,7 @@
 import sqlite3
 import sys
 import re
+from typing import Any
 
 from sqlite_utils import Database
 from rich.console import Console
@@ -98,12 +99,13 @@ def add_video(channel_id: str, video_id: str, video_title: str, video_url: str, 
     conn.close()
 
 
-def add_subtitle(video_id: str, start_time: str, text: str) -> None:
+def add_subtitle(video_id: str, start_time: str, stop_time: str, text: str) -> None:
     db = Database(get_db_path())
 
     db["Subtitles"].insert({
         "video_id": video_id,
-        "timestamp": start_time,
+        "start_time": start_time,
+        "stop_time": stop_time,
         "text": text
     })
 
@@ -139,40 +141,55 @@ def parse_query(query: str) -> str:
     return ' '.join(parsed_query)
 
 
-def search_channel(channel_id: str, text: str, limit: int | None = None) -> list[dict[str, int | str]]:
+def search_channel(
+    channel_id: str,
+    text: str,
+    limit: int | None = None,
+    after_time: str | None = None,
+    before_time: str | None = None
+) -> list[dict[str, int | str]]:
     conn = sqlite3.connect(get_db_path())
     curr = conn.cursor()
-    
+
     fts5_query = parse_query(text)
+    params: list = [fts5_query, channel_id]
 
     query = """
-        SELECT 
+        SELECT
             s.rowid,
             s.subtitle_id,
             s.video_id,
             s.start_time,
             s.stop_time,
             s.text
-        FROM 
+        FROM
             Subtitles_fts fts
-        JOIN 
+        JOIN
             Subtitles s ON fts.rowid = s.rowid
-        JOIN 
+        JOIN
             Videos v ON s.video_id = v.video_id
-        WHERE 
+        WHERE
             fts.text MATCH ?
-            AND v.channel_id = ? 
-        ORDER BY 
-            rank
+            AND v.channel_id = ?
     """
-    
+
+    if after_time is not None:
+        query += " AND s.start_time >= ?"
+        params.append(after_time)
+
+    if before_time is not None:
+        query += " AND s.start_time <= ?"
+        params.append(before_time)
+
+    query += " ORDER BY rank"
+
     if limit is not None:
         query += " LIMIT ?"
-        curr.execute(query, (fts5_query, channel_id, limit))
-    else:
-        curr.execute(query, (fts5_query, channel_id))
+        params.append(limit)
 
+    curr.execute(query, params)
     res = curr.fetchall()
+
     formatted_res = []
     for row in res:
         formatted_res.append({
@@ -188,91 +205,51 @@ def search_channel(channel_id: str, text: str, limit: int | None = None) -> list
     return formatted_res
 
 
-def search_video(video_id: str, text: str, limit: int | None = None) -> list[dict[str, int | str]]:
+def search_video(
+    video_id: str,
+    text: str,
+    limit: int | None = None,
+    after_time: str | None = None,
+    before_time: str | None = None
+) -> list[dict[str, int | str]]:
     try:
         conn = sqlite3.connect(get_db_path())
         curr = conn.cursor()
 
         fts5_query = parse_query(text)
+        params: list = [video_id, fts5_query]
+
         sql = """
-        SELECT 
+        SELECT
             s.rowid,
             s.subtitle_id,
             s.video_id,
             s.start_time,
             s.stop_time,
-            s.text 
+            s.text
         FROM
             Subtitles_fts fts
         JOIN
-            Subtitles s ON fts.rowid = s.rowid 
+            Subtitles s ON fts.rowid = s.rowid
         WHERE
             s.video_id = ?
         AND
             fts.text MATCH ?
         """
 
-        if limit is not None:
-            sql += " LIMIT ?"
-            curr.execute(sql, (video_id, fts5_query, limit))
-        else:
-            curr.execute(sql, (video_id, fts5_query))
-        
-        res = curr.fetchall()
+        if after_time is not None:
+            sql += " AND s.start_time >= ?"
+            params.append(after_time)
 
-        formatted_res = []
-
-        for row in res:
-            formatted_res.append({
-                "rowid": row[0],
-                "subtitle_id": row[1],
-                "video_id": row[2],
-                "start_time": row[3],
-                "stop_time": row[4],
-                "text": row[5]
-            })
-        
-        conn.close()
-        return formatted_res 
-
-    except Exception as e:
-        print(e)
-        sys.exit(1)
-    finally:
-        conn.close()
-
-
-def search_all(text: str, limit: int | None = None) -> list[dict[str, int | str]]:
-    try:
-        conn = sqlite3.connect(get_db_path())
-        curr = conn.cursor()
-        fts5_query = parse_query(text)
-
-        sql = """
-            SELECT 
-                s.rowid,
-                s.subtitle_id,
-                s.video_id,
-                s.start_time,
-                s.stop_time,
-                s.text
-            FROM
-                Subtitles_fts fts
-            JOIN
-                Subtitles s ON fts.rowid = s.rowid
-            WHERE
-                fts.text MATCH ?
-            ORDER BY
-                rank
-        """
+        if before_time is not None:
+            sql += " AND s.start_time <= ?"
+            params.append(before_time)
 
         if limit is not None:
             sql += " LIMIT ?"
-            curr.execute(sql, (fts5_query, limit))
-        else:
-            curr.execute(sql, (fts5_query,))
+            params.append(limit)
 
-
+        curr.execute(sql, params)
         res = curr.fetchall()
 
         formatted_res = []
@@ -293,7 +270,74 @@ def search_all(text: str, limit: int | None = None) -> list[dict[str, int | str]
     except Exception as e:
         print(e)
         sys.exit(1)
-    
+    finally:
+        conn.close()
+
+
+def search_all(
+    text: str,
+    limit: int | None = None,
+    after_time: str | None = None,
+    before_time: str | None = None
+) -> list[dict[str, int | str]]:
+    try:
+        conn = sqlite3.connect(get_db_path())
+        curr = conn.cursor()
+        fts5_query = parse_query(text)
+        params: list = [fts5_query]
+
+        sql = """
+            SELECT
+                s.rowid,
+                s.subtitle_id,
+                s.video_id,
+                s.start_time,
+                s.stop_time,
+                s.text
+            FROM
+                Subtitles_fts fts
+            JOIN
+                Subtitles s ON fts.rowid = s.rowid
+            WHERE
+                fts.text MATCH ?
+        """
+
+        if after_time is not None:
+            sql += " AND s.start_time >= ?"
+            params.append(after_time)
+
+        if before_time is not None:
+            sql += " AND s.start_time <= ?"
+            params.append(before_time)
+
+        sql += " ORDER BY rank"
+
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(limit)
+
+        curr.execute(sql, params)
+        res = curr.fetchall()
+
+        formatted_res = []
+
+        for row in res:
+            formatted_res.append({
+                "rowid": row[0],
+                "subtitle_id": row[1],
+                "video_id": row[2],
+                "start_time": row[3],
+                "stop_time": row[4],
+                "text": row[5]
+            })
+
+        conn.close()
+        return formatted_res
+
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+
     finally:
         conn.close()
 
@@ -304,7 +348,7 @@ def get_title_from_db(video_id: str) -> str:
     return db.execute(f"SELECT video_title FROM Videos WHERE video_id = ?", [video_id]).fetchone()[0]
 
 
-def get_metadata_from_db(video_id: str) -> dict[str, any]:
+def get_metadata_from_db(video_id: str) -> dict[str, Any]:
     db = Database(get_db_path())
 
     metadata = db.execute_returning_dicts(f"SELECT * FROM Videos WHERE video_id = ?", [video_id])[0]
@@ -455,7 +499,7 @@ def get_all_subs_by_channel_id_ss(channel_id: str) -> list[tuple[int, str, str, 
 
     parsed_subs = []
     subs = db.execute("""
-        SELECT s.subtitle_id, s.video_id, s.timestamp, s.text 
+        SELECT s.subtitle_id, s.video_id, s.start_time, s.text
         FROM Subtitles s
         JOIN Videos v ON s.video_id = v.video_id
         WHERE v.channel_id = ?

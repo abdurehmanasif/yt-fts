@@ -24,7 +24,7 @@ def show_message(code: str) -> None:
 
 def time_to_secs(time_str: str) -> int:
     """
-    converts timestamp to seconds youtube urls. Subtracts 3 seconds to give a buffer. 
+    converts timestamp to seconds youtube urls. Subtracts 3 seconds to give a buffer.
     """
     time_rex = re.search(r"^(\d\d):(\d\d):(\d\d)", time_str)
     hours = int(time_rex.group(1)) * 3600
@@ -33,6 +33,51 @@ def time_to_secs(time_str: str) -> int:
     total_secs = hours + mins + secs
 
     return total_secs - 3
+
+
+def normalize_time(time_str: str) -> str:
+    """
+    Normalize time string to HH:MM:SS.000 format for database comparison.
+    Accepts: HH:MM:SS, HH:MM:SS.mmm, MM:SS, or SS
+
+    Examples:
+        "90" -> "00:01:30.000"
+        "5:30" -> "00:05:30.000"
+        "1:05:30" -> "01:05:30.000"
+        "00:05:23.456" -> "00:05:23.000"
+    """
+    # Strip whitespace
+    time_str = time_str.strip()
+
+    # Handle milliseconds if present - strip them for normalization
+    if '.' in time_str:
+        time_str = time_str.split('.')[0]
+
+    parts = time_str.split(':')
+
+    if len(parts) == 1:
+        # Just seconds (may be > 60)
+        total_secs = int(parts[0])
+        hours = total_secs // 3600
+        mins = (total_secs % 3600) // 60
+        secs = total_secs % 60
+        return f"{hours:02d}:{mins:02d}:{secs:02d}.000"
+    elif len(parts) == 2:
+        # MM:SS format
+        mins = int(parts[0])
+        secs = int(parts[1])
+        # Handle minutes > 59
+        hours = mins // 60
+        mins = mins % 60
+        return f"{hours:02d}:{mins:02d}:{secs:02d}.000"
+    elif len(parts) == 3:
+        # HH:MM:SS format
+        hours = int(parts[0])
+        mins = int(parts[1])
+        secs = int(parts[2])
+        return f"{hours:02d}:{mins:02d}:{secs:02d}.000"
+    else:
+        raise ValueError(f"Invalid time format: {time_str}. Expected HH:MM:SS, MM:SS, or SS")
 
 
 def parse_vtt(vtt_path: str) -> list[dict[str, str]]:

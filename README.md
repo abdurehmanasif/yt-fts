@@ -17,12 +17,33 @@ It also supports semantic search via the [OpenAI embeddings API](https://beta.op
 
 https://github.com/NotJoeMartinez/yt-fts/assets/39905973/6ffd8962-d060-490f-9e73-9ab179402f14
 
-## Installation 
+## Installation
 
-pip 
+### Using pip
 
 ```bash
 pip install yt-fts
+```
+
+### Using uv (faster)
+
+```bash
+uv pip install yt-fts
+```
+
+### Development Installation
+
+```bash
+git clone https://github.com/NotJoeMartinez/yt-fts.git
+cd yt-fts
+
+# Using uv (recommended)
+uv sync
+uv run yt-fts --help
+
+# Or using pip
+pip install -e .
+yt-fts --help
 ```
 
 ## Commands
@@ -139,24 +160,30 @@ yt-fts export --channel "3Blue1Brown" --format vtt
 ### `search` (Full Text Search)
 Full text search for a string in saved channels.
 
-- The search string does not have to be a word for word and match 
-- Search strings are limited to 40 characters. 
+- The search string does not have to be a word for word and match
+- Search strings are limited to 40 characters.
 
 ```bash
 # search in all channels
-yt-fts search "[search query]" 
+yt-fts search "[search query]"
 
-# search in channel 
-yt-fts search "[search query]" --channel "[channel name or id]" 
+# search in channel
+yt-fts search "[search query]" --channel "[channel name or id]"
 
 # search in specific video
 yt-fts search "[search query]" --video-id "[video id]"
 
-# limit results 
+# limit results
 yt-fts search "[search query]" --limit "[number of results]" --channel "[channel name or id]"
 
 # export results to csv
-yt-fts search "[search query]" --export --channel "[channel name or id]" 
+yt-fts search "[search query]" --export --channel "[channel name or id]"
+
+# search within a specific time window (filter by video timestamp)
+yt-fts search "[search query]" --channel "[channel]" --after-time "00:05:00" --before-time "00:30:00"
+
+# time formats accepted: HH:MM:SS, MM:SS, or just seconds
+yt-fts search "[search query]" --after-time "5:00" --before-time "30:00"
 ```
 
 **Options:**
@@ -164,6 +191,8 @@ yt-fts search "[search query]" --export --channel "[channel name or id]"
 - `-v, --video-id`: The id of the video to search in
 - `-l, --limit`: Number of results to return (default: 10)
 - `-e, --export`: Export search results to a CSV file
+- `--after-time`: Only show results after this timestamp (HH:MM:SS, MM:SS, or SS)
+- `--before-time`: Only show results before this timestamp (HH:MM:SS, MM:SS, or SS)
 
 **Advanced Search Syntax:**
 
@@ -212,10 +241,10 @@ After the embeddings are saved you will see a `(ss)` next to the channel name wh
 list channels, and you will be able to use the `vsearch` command for that channel. 
 
 ### `vsearch` (Semantic Search)
-`vsearch` is for "Vector search". This requires that you enable semantic 
-search for a channel with `embeddings`. It has the same options as 
-`search` but output will be sorted by similarity to the search string and 
-the default return limit is 10. 
+`vsearch` is for "Vector search". This requires that you enable semantic
+search for a channel with `embeddings`. It has the same options as
+`search` but output will be sorted by similarity to the search string and
+the default return limit is 10.
 
 ```bash
 # search by channel name
@@ -224,11 +253,14 @@ yt-fts vsearch "[search query]" --channel "[channel name or id]"
 # search in specific video
 yt-fts vsearch "[search query]" --video-id "[video id]"
 
-# limit results 
+# limit results
 yt-fts vsearch "[search query]" --limit "[number of results]" --channel "[channel name or id]"
 
 # export results to csv
-yt-fts vsearch "[search query]" --export --channel "[channel name or id]" 
+yt-fts vsearch "[search query]" --export --channel "[channel name or id]"
+
+# search within a specific time window
+yt-fts vsearch "[search query]" --channel "[channel]" --after-time "00:10:00" --before-time "01:00:00"
 ```
 
 **Options:**
@@ -237,6 +269,8 @@ yt-fts vsearch "[search query]" --export --channel "[channel name or id]"
 - `-l, --limit`: Number of results to return (default: 10)
 - `-e, --export`: Export search results to a CSV file
 - `--api-key`: API key (if not provided, reads from OPENAI_API_KEY or GEMINI_API_KEY environment variable)
+- `--after-time`: Only show results after this timestamp (HH:MM:SS, MM:SS, or SS)
+- `--before-time`: Only show results before this timestamp (HH:MM:SS, MM:SS, or SS)
 
 ### `llm` (Chat Bot)
 Starts interactive chat session with a model using 

@@ -7,7 +7,7 @@ from openai import OpenAI
 from .llm.get_embeddings import EmbeddingsHandler
 from .export import ExportHandler
 from .config import get_chroma_client
-from .utils import Model, time_to_secs, bold_query_matches
+from .utils import Model, time_to_secs, bold_query_matches, normalize_time
 from .db_utils import (
     search_all,
     get_channel_id_from_input,
@@ -26,7 +26,9 @@ class SearchHandler:
                  video_id: str | None = None,
                  export: bool = False,
                  limit: int | None = None,
-                 openai_client: OpenAI | None = None
+                 openai_client: OpenAI | None = None,
+                 after_time: str | None = None,
+                 before_time: str | None = None
                  ) -> None:
 
         self.console = Console()
@@ -40,6 +42,9 @@ class SearchHandler:
         self.response = []
         self.openai_client = openai_client
         self.max_width = 80
+        # Normalize time window parameters if provided
+        self.after_time = normalize_time(after_time) if after_time else None
+        self.before_time = normalize_time(before_time) if before_time else None
 
     def full_text_search(self, query: str) -> None:
 
@@ -47,14 +52,26 @@ class SearchHandler:
         self.query = query
 
         if self.scope == 'all':
-            self.res = search_all(query, self.limit)
+            self.res = search_all(
+                query, self.limit,
+                after_time=self.after_time,
+                before_time=self.before_time
+            )
 
         if self.scope == 'channel':
             self.channel_id = get_channel_id_from_input(self.channel)
-            self.res = search_channel(self.channel_id, self.query, self.limit)
+            self.res = search_channel(
+                self.channel_id, self.query, self.limit,
+                after_time=self.after_time,
+                before_time=self.before_time
+            )
 
         if self.scope == 'video':
-            self.res = search_video(self.video_id, self.query, self.limit)
+            self.res = search_video(
+                self.video_id, self.query, self.limit,
+                after_time=self.after_time,
+                before_time=self.before_time
+            )
 
         if len(self.res) == 0:
             console.print(f"[yellow]No matches found[/yellow]\n"
@@ -91,9 +108,15 @@ class SearchHandler:
         search_embedding = next(embeddings_handler.get_embedding(
             [query], model['embedding_model'], openai_client)
         )
+
+        # Request more results if time filtering is enabled, since we'll filter post-query
+        n_results = self.limit
+        if self.after_time or self.before_time:
+            n_results = self.limit * 3  # Request 3x results to account for filtering
+
         chroma_res = collection.query(
             query_embeddings=[search_embedding],
-            n_results=self.limit,
+            n_results=n_results,
             where=scope_options,
         )
 
@@ -107,6 +130,13 @@ class SearchHandler:
             text = documents[i]
             video_id = metadata[i]["video_id"]
             start_time = metadata[i]["start_time"]
+
+            # Apply time window filtering for vector search results
+            if self.after_time and start_time < self.after_time:
+                continue
+            if self.before_time and start_time > self.before_time:
+                continue
+
             link = f"https://youtu.be/{video_id}?t={time_to_secs(start_time)}"
             channel_name = get_channel_name_from_video_id(video_id)
             channel_id = metadata[i]["channel_id"]
@@ -123,6 +153,10 @@ class SearchHandler:
                 "link": link,
             }
             res.append(match)
+
+            # Stop once we have enough results
+            if len(res) >= self.limit:
+                break
 
         self.res = res
 

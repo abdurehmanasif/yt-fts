@@ -216,7 +216,12 @@ def export(channel: str, format: str) -> None:
 @click.option("-v", "--video-id", default=None, help="The id of the video to search in.")
 @click.option("-l", "--limit", default=10, type=int, help="Number of results to return")
 @click.option("-e", "--export", is_flag=True, help="Export search results to a CSV file.")
-def search(text: str, channel: str | None, video_id: str | None, export: bool, limit: int) -> None:
+@click.option("--after-time", default=None,
+              help="Only show results after this timestamp (HH:MM:SS, MM:SS, or SS)")
+@click.option("--before-time", default=None,
+              help="Only show results before this timestamp (HH:MM:SS, MM:SS, or SS)")
+def search(text: str, channel: str | None, video_id: str | None, export: bool, limit: int,
+           after_time: str | None, before_time: str | None) -> None:
 
     if len(text) > 40:
         show_message("search_too_long")
@@ -234,7 +239,9 @@ def search(text: str, channel: str | None, video_id: str | None, export: bool, l
         video_id=video_id,
         channel=channel,
         export=export,
-        limit=limit
+        limit=limit,
+        after_time=after_time,
+        before_time=before_time
     )
 
     search_handler.full_text_search(text)
@@ -256,8 +263,13 @@ def search(text: str, channel: str | None, video_id: str | None, export: bool, l
 @click.option("--api-key", default=None,
               help="OpenAI or Gemini API key. If not provided, the script will attempt to read it from the OPENAI_API_KEY or GEMINI_API_KEY"
                    "environment variables.")
-def vsearch(text: str, channel: str | None, video_id: str | None, limit: int, export: bool, api_key: str | None) -> None:
-  
+@click.option("--after-time", default=None,
+              help="Only show results after this timestamp (HH:MM:SS, MM:SS, or SS)")
+@click.option("--before-time", default=None,
+              help="Only show results before this timestamp (HH:MM:SS, MM:SS, or SS)")
+def vsearch(text: str, channel: str | None, video_id: str | None, limit: int, export: bool,
+            api_key: str | None, after_time: str | None, before_time: str | None) -> None:
+
     try:
         model = get_model_config(api_key)
         api_key = model['api_key']
@@ -283,7 +295,9 @@ def vsearch(text: str, channel: str | None, video_id: str | None, limit: int, ex
         video_id=video_id,
         export=export,
         limit=limit,
-        openai_client=openai_client
+        openai_client=openai_client,
+        after_time=after_time,
+        before_time=before_time
     )
 
     vsearch_handler.vector_search(query=text, model=model)
