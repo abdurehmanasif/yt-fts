@@ -10,7 +10,7 @@ from .export import ExportHandler
 from .search import SearchHandler
 
 from .list import list_channels
-from .utils import get_model_config, show_message
+from .utils import get_model_config, show_message, normalize_time_input
 from .config import get_config_path, get_db_path, get_or_make_chroma_path
 from .db_utils import (
     get_channel_id_from_input,
@@ -265,11 +265,35 @@ def export(channel: str, format: str) -> None:
 @click.option(
     "-e", "--export", is_flag=True, help="Export search results to a CSV file."
 )
+@click.option(
+    "--start-time",
+    default=None,
+    help="Filter results from this time (MM:SS or HH:MM:SS)",
+)
+@click.option(
+    "--end-time",
+    default=None,
+    help="Filter results up to this time (MM:SS or HH:MM:SS)",
+)
 def search(
-    text: str, channel: str | None, video_id: str | None, export: bool, limit: int
+    text: str,
+    channel: str | None,
+    video_id: str | None,
+    export: bool,
+    limit: int,
+    start_time: str | None,
+    end_time: str | None,
 ) -> None:
     if len(text) > 40:
         show_message("search_too_long")
+        sys.exit(1)
+
+    # Normalize time inputs
+    try:
+        start_time = normalize_time_input(start_time) if start_time else None
+        end_time = normalize_time_input(end_time) if end_time else None
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
 
     if channel:
@@ -280,7 +304,13 @@ def search(
         scope = "all"
 
     search_handler = SearchHandler(
-        scope=scope, video_id=video_id, channel=channel, export=export, limit=limit
+        scope=scope,
+        video_id=video_id,
+        channel=channel,
+        export=export,
+        limit=limit,
+        start_time=start_time,
+        end_time=end_time,
     )
 
     search_handler.full_text_search(text)
@@ -311,6 +341,16 @@ def search(
     help="OpenAI or Gemini API key. If not provided, the script will attempt to read it from the OPENAI_API_KEY or GEMINI_API_KEY"
     "environment variables.",
 )
+@click.option(
+    "--start-time",
+    default=None,
+    help="Filter results from this time (MM:SS or HH:MM:SS)",
+)
+@click.option(
+    "--end-time",
+    default=None,
+    help="Filter results up to this time (MM:SS or HH:MM:SS)",
+)
 def vsearch(
     text: str,
     channel: str | None,
@@ -318,6 +358,8 @@ def vsearch(
     limit: int,
     export: bool,
     api_key: str | None,
+    start_time: str | None,
+    end_time: str | None,
 ) -> None:
     try:
         model = get_model_config(api_key)
@@ -329,6 +371,14 @@ def vsearch(
             'export "GEMINI_API_KEY=<your_key>" or pass '
             "one in with --api-key"
         )
+        sys.exit(1)
+
+    # Normalize time inputs
+    try:
+        start_time = normalize_time_input(start_time) if start_time else None
+        end_time = normalize_time_input(end_time) if end_time else None
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
 
     if channel:
@@ -347,6 +397,8 @@ def vsearch(
         export=export,
         limit=limit,
         openai_client=openai_client,
+        start_time=start_time,
+        end_time=end_time,
     )
 
     vsearch_handler.vector_search(query=text, model=model)

@@ -405,9 +405,7 @@ class DownloadHandler:
                         self.console.print(
                             "  - Reduce the number of parallel jobs (-j option)"
                         )
-                        self.console.print(
-                            "  - Wait a few minutes before trying again"
-                        )
+                        self.console.print("  - Wait a few minutes before trying again")
                         self.console.print(
                             "  - Check if the video is available in your region"
                         )

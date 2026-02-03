@@ -138,12 +138,16 @@ def parse_query(query: str) -> str:
 
 
 def search_channel(
-    channel_id: str, text: str, limit: int | None = None
+    channel_id: str,
+    text: str,
+    limit: int | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
 ) -> list[dict[str, int | str]]:
     with sqlite3.connect(get_db_path()) as conn:
         curr = conn.cursor()
-
         fts5_query = parse_query(text)
+        params: list = [fts5_query, channel_id]
 
         query = """
             SELECT 
@@ -161,42 +165,50 @@ def search_channel(
                 Videos v ON s.video_id = v.video_id
             WHERE 
                 fts.text MATCH ?
-                AND v.channel_id = ? 
-            ORDER BY 
-                rank
-        """
+                AND v.channel_id = ?"""
+
+        if start_time is not None:
+            query += " AND s.start_time >= ?"
+            params.append(start_time)
+        if end_time is not None:
+            query += " AND s.start_time <= ?"
+            params.append(end_time)
+
+        query += " ORDER BY rank"
 
         if limit is not None:
             query += " LIMIT ?"
-            curr.execute(query, (fts5_query, channel_id, limit))
-        else:
-            curr.execute(query, (fts5_query, channel_id))
+            params.append(limit)
 
+        curr.execute(query, params)
         res = curr.fetchall()
-        formatted_res = []
-        for row in res:
-            formatted_res.append(
-                {
-                    "rowid": row[0],
-                    "subtitle_id": row[1],
-                    "video_id": row[2],
-                    "start_time": row[3],
-                    "stop_time": row[4],
-                    "text": row[5],
-                }
-            )
 
-    return formatted_res
+        return [
+            {
+                "rowid": row[0],
+                "subtitle_id": row[1],
+                "video_id": row[2],
+                "start_time": row[3],
+                "stop_time": row[4],
+                "text": row[5],
+            }
+            for row in res
+        ]
 
 
 def search_video(
-    video_id: str, text: str, limit: int | None = None
+    video_id: str,
+    text: str,
+    limit: int | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
 ) -> list[dict[str, int | str]]:
     try:
         with sqlite3.connect(get_db_path()) as conn:
             curr = conn.cursor()
-
             fts5_query = parse_query(text)
+            params: list = [video_id, fts5_query]
+
             sql = """
             SELECT 
                 s.rowid,
@@ -212,41 +224,49 @@ def search_video(
             WHERE
                 s.video_id = ?
             AND
-                fts.text MATCH ?
-            """
+                fts.text MATCH ?"""
+
+            if start_time is not None:
+                sql += " AND s.start_time >= ?"
+                params.append(start_time)
+            if end_time is not None:
+                sql += " AND s.start_time <= ?"
+                params.append(end_time)
 
             if limit is not None:
                 sql += " LIMIT ?"
-                curr.execute(sql, (video_id, fts5_query, limit))
-            else:
-                curr.execute(sql, (video_id, fts5_query))
+                params.append(limit)
 
+            curr.execute(sql, params)
             res = curr.fetchall()
 
-            formatted_res = []
-
-            for row in res:
-                formatted_res.append(
-                    {
-                        "rowid": row[0],
-                        "subtitle_id": row[1],
-                        "video_id": row[2],
-                        "start_time": row[3],
-                        "stop_time": row[4],
-                        "text": row[5],
-                    }
-                )
-            return formatted_res
+            return [
+                {
+                    "rowid": row[0],
+                    "subtitle_id": row[1],
+                    "video_id": row[2],
+                    "start_time": row[3],
+                    "stop_time": row[4],
+                    "text": row[5],
+                }
+                for row in res
+            ]
     except sqlite3.Error as e:
         print(e)
         sys.exit(1)
 
 
-def search_all(text: str, limit: int | None = None) -> list[dict[str, int | str]]:
+def search_all(
+    text: str,
+    limit: int | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+) -> list[dict[str, int | str]]:
     try:
         with sqlite3.connect(get_db_path()) as conn:
             curr = conn.cursor()
             fts5_query = parse_query(text)
+            params: list = [fts5_query]
 
             sql = """
                 SELECT 
@@ -261,34 +281,35 @@ def search_all(text: str, limit: int | None = None) -> list[dict[str, int | str]
                 JOIN
                     Subtitles s ON fts.rowid = s.rowid
                 WHERE
-                    fts.text MATCH ?
-                ORDER BY
-                    rank
-            """
+                    fts.text MATCH ?"""
+
+            if start_time is not None:
+                sql += " AND s.start_time >= ?"
+                params.append(start_time)
+            if end_time is not None:
+                sql += " AND s.start_time <= ?"
+                params.append(end_time)
+
+            sql += " ORDER BY rank"
 
             if limit is not None:
                 sql += " LIMIT ?"
-                curr.execute(sql, (fts5_query, limit))
-            else:
-                curr.execute(sql, (fts5_query,))
+                params.append(limit)
 
+            curr.execute(sql, params)
             res = curr.fetchall()
 
-            formatted_res = []
-
-            for row in res:
-                formatted_res.append(
-                    {
-                        "rowid": row[0],
-                        "subtitle_id": row[1],
-                        "video_id": row[2],
-                        "start_time": row[3],
-                        "stop_time": row[4],
-                        "text": row[5],
-                    }
-                )
-
-        return formatted_res
+            return [
+                {
+                    "rowid": row[0],
+                    "subtitle_id": row[1],
+                    "video_id": row[2],
+                    "start_time": row[3],
+                    "stop_time": row[4],
+                    "text": row[5],
+                }
+                for row in res
+            ]
 
     except sqlite3.Error as e:
         print(e)

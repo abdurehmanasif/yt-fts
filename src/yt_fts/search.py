@@ -28,6 +28,8 @@ class SearchHandler:
         export: bool = False,
         limit: int | None = None,
         openai_client: OpenAI | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
     ) -> None:
         self.console = Console()
         self.scope = scope
@@ -40,20 +42,26 @@ class SearchHandler:
         self.response = []
         self.openai_client = openai_client
         self.max_width = 80
+        self.start_time = start_time
+        self.end_time = end_time
 
     def full_text_search(self, query: str) -> None:
         console = self.console
         self.query = query
 
         if self.scope == "all":
-            self.res = search_all(query, self.limit)
+            self.res = search_all(query, self.limit, self.start_time, self.end_time)
 
         if self.scope == "channel":
             self.channel_id = get_channel_id_from_input(self.channel)
-            self.res = search_channel(self.channel_id, self.query, self.limit)
+            self.res = search_channel(
+                self.channel_id, self.query, self.limit, self.start_time, self.end_time
+            )
 
         if self.scope == "video":
-            self.res = search_video(self.video_id, self.query, self.limit)
+            self.res = search_video(
+                self.video_id, self.query, self.limit, self.start_time, self.end_time
+            )
 
         if len(self.res) == 0:
             console.print(
@@ -112,6 +120,13 @@ class SearchHandler:
             text = documents[i]
             video_id = metadata[i]["video_id"]
             start_time = metadata[i]["start_time"]
+
+            # Filter by time window (post-query since ChromaDB doesn't support range queries)
+            if self.start_time and start_time < self.start_time:
+                continue
+            if self.end_time and start_time > self.end_time:
+                continue
+
             link = f"https://youtu.be/{video_id}?t={time_to_secs(start_time)}"
             channel_name = get_channel_name_from_video_id(video_id)
             channel_id = metadata[i]["channel_id"]

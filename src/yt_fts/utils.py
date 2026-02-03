@@ -39,6 +39,31 @@ def time_to_secs(time_str: str) -> int:
     return max(0, total_secs)  # Ensure non-negative
 
 
+def normalize_time_input(time_str: str) -> str:
+    """
+    Normalize user time input to HH:MM:SS.000 format for DB comparison.
+    Accepts MM:SS or HH:MM:SS, returns HH:MM:SS.000.
+    Raises ValueError if format is invalid.
+    """
+    # Try HH:MM:SS format first
+    match = re.match(r"^(\d{1,2}):(\d{2}):(\d{2})$", time_str)
+    if match:
+        h, m, s = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        if m > 59 or s > 59:
+            raise ValueError(f"Invalid time: {time_str}. Minutes/seconds must be < 60")
+        return f"{h:02d}:{m:02d}:{s:02d}.000"
+
+    # Try MM:SS format
+    match = re.match(r"^(\d{1,2}):(\d{2})$", time_str)
+    if match:
+        m, s = int(match.group(1)), int(match.group(2))
+        if m > 59 or s > 59:
+            raise ValueError(f"Invalid time: {time_str}. Minutes/seconds must be < 60")
+        return f"00:{m:02d}:{s:02d}.000"
+
+    raise ValueError(f"Invalid time format: {time_str}. Expected MM:SS or HH:MM:SS")
+
+
 def parse_vtt(vtt_path: str) -> list[dict[str, str]]:
     result = word_level_vtt_parser(vtt_path)
 
