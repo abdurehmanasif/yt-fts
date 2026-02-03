@@ -5,7 +5,8 @@ import shutil
 import requests
 from zipfile import ZipFile
 
-CONFIG_DIR = os.path.expanduser('~/.config/yt-fts')
+CONFIG_DIR = os.path.expanduser("~/.config/yt-fts")
+
 
 def fetch_and_unzip_test_db():
     # This database doesn't work with Gemini implementation because the ChromaDB dimension is set to 1536 when the Gemini implementation expects 768
@@ -45,8 +46,6 @@ def fetch_and_unzip_test_db():
     #         print(f"{sub_indent}{f}")
 
 
-
 def get_test_db():
-    conn = sqlite3.connect(f"{CONFIG_DIR}/subtitles.db")
-    curr = conn.cursor()
-    return curr
+    """Returns connection - caller must use with context manager or close manually"""
+    return sqlite3.connect(f"{CONFIG_DIR}/subtitles.db")

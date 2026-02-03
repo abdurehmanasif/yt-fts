@@ -87,7 +87,9 @@ profile_default/
 ipython_config.py
 
 # pyenv
-.python-version
+# Note: .python-version at root is tracked for uv compatibility
+**/.python-version
+!/.python-version
 
 # celery beat schedule file
 celerybeat-schedule

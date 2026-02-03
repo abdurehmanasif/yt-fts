@@ -9,59 +9,59 @@ from .config import get_db_path
 
 
 def show_video_transcript(video_id: str) -> None:
-    con = sqlite3.connect(get_db_path())
-    cur = con.cursor()
-    cur.execute("SELECT * FROM subtitles WHERE video_id=?", (video_id,))
-    rows = cur.fetchall()
+    with sqlite3.connect(get_db_path()) as con:
+        cur = con.cursor()
+        cur.execute("SELECT * FROM subtitles WHERE video_id=?", (video_id,))
+        rows = cur.fetchall()
 
-    console = Console()
-    word_count = 0
-    for row in rows:
-        timestamp = row[2]
-        time = time_to_secs(timestamp)
-        url = f"https://www.youtube.com/watch?v={video_id}&t={time}s"
-        text = row[4]
-        word_count += len(text.split())
-        console.print(f"[link={url}]{timestamp[:-4]}[/link] - {text}")
+        console = Console()
+        word_count = 0
+        for row in rows:
+            timestamp = row[2]
+            time = time_to_secs(timestamp)
+            url = f"https://www.youtube.com/watch?v={video_id}&t={time}s"
+            text = row[4]
+            word_count += len(text.split())
+            console.print(f"[link={url}]{timestamp[:-4]}[/link] - {text}")
 
-    video_length = get_time_delta(rows[0][2], rows[-1][2])
-    video_title = get_title_from_db(video_id)
-    video_url = f"https://www.youtube.com/watch?v={video_id}"
+        video_length = get_time_delta(rows[0][2], rows[-1][2])
+        video_title = get_title_from_db(video_id)
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
 
-    console.print(f"")
-    console.print(f"Title: [bold][link={video_url}]{video_title}[/link][/bold]")
-    console.print(f"Video Length: {video_length}")
-    console.print(f"Word Count: {word_count}")
-
-    con.close()
+        console.print("")
+        console.print(f"Title: [bold][link={video_url}]{video_title}[/link][/bold]")
+        console.print(f"Video Length: {video_length}")
+        console.print(f"Word Count: {word_count}")
 
 
 def show_video_list(channel_id: str) -> None:
-    con = sqlite3.connect(get_db_path())
-    cur = con.cursor()
-    cur.execute("SELECT * FROM videos WHERE channel_id=?", (channel_id,))
+    with sqlite3.connect(get_db_path()) as con:
+        cur = con.cursor()
+        cur.execute("SELECT * FROM videos WHERE channel_id=?", (channel_id,))
 
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Link", style="cyan")
-    table.add_column("Video ID")
-    table.add_column("Title")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Link", style="cyan")
+        table.add_column("Video ID")
+        table.add_column("Title")
 
-    rows = cur.fetchall()
-    for i, row in enumerate(rows):
-        video_id = row[0]
-        link = f"https://www.youtube.com/watch?v={video_id}"
-        link_str = f"[link={link}]Link[/link]"
-        title = get_title_from_db(video_id)
+        rows = cur.fetchall()
+        for i, row in enumerate(rows):
+            video_id = row[0]
+            link = f"https://www.youtube.com/watch?v={video_id}"
+            link_str = f"[link={link}]Link[/link]"
+            title = get_title_from_db(video_id)
 
-        table.add_row(link_str, video_id, title)
+            table.add_row(link_str, video_id, title)
 
-        if i != len(rows) - 1:
-            table.add_row("----", "-" * len(video_id), "-" * len(title), style="dim")
+            if i != len(rows) - 1:
+                table.add_row(
+                    "----", "-" * len(video_id), "-" * len(title), style="dim"
+                )
 
-    console = Console()
-    console.print(table)
+        console = Console()
+        console.print(table)
 
-    console.print(f"\n[bold]Total videos: {len(rows)}[/bold]")
+        console.print(f"\n[bold]Total videos: {len(rows)}[/bold]")
 
 
 def list_channels(channel_id: str | None = None) -> None:
@@ -114,21 +114,21 @@ def check_ss_enabled(channel_id: str | None = None) -> bool:
     from yt_fts.config import get_db_path
 
     db_path = get_db_path()
-    con = sqlite3.connect(db_path)
-    cur = con.cursor()
+    with sqlite3.connect(db_path) as con:
+        cur = con.cursor()
 
-    if channel_id is None:
-        cur.execute(""" 
-            SELECT channel_id FROM SemanticSearchEnabled 
-            """)
-    else:
-        cur.execute(""" 
-            SELECT channel_id FROM SemanticSearchEnabled 
-            WHERE channel_id = ?
-            """, [channel_id])
+        if channel_id is None:
+            cur.execute(""" 
+                SELECT channel_id FROM SemanticSearchEnabled 
+                """)
+        else:
+            cur.execute(
+                """ 
+                SELECT channel_id FROM SemanticSearchEnabled 
+                WHERE channel_id = ?
+                """,
+                [channel_id],
+            )
 
-    res = cur.fetchone()
-    if res is None:
-        return False
-    else:
-        return True
+        res = cur.fetchone()
+        return res is not None

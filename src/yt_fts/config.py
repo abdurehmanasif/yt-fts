@@ -1,28 +1,28 @@
-import sys 
+import sys
 import os
 
 import chromadb
 from chromadb.config import Settings
 from chromadb.api import ClientAPI
 
-def get_config_path() -> str | None:
 
+def get_config_path() -> str | None:
     platform = sys.platform
 
-    if platform == 'win32':
-        config_path = os.path.join(os.getenv('APPDATA'), 'yt-fts')
-        if not os.path.exists(config_path):
-            return None
-        else:
-            return config_path 
-
-    if platform == 'darwin' or platform == 'linux':
-        config_path = os.path.join(os.getenv('HOME'), '.config', 'yt-fts')
+    if platform == "win32":
+        config_path = os.path.join(os.getenv("APPDATA"), "yt-fts")
         if not os.path.exists(config_path):
             return None
         else:
             return config_path
-    
+
+    if platform == "darwin" or platform == "linux":
+        config_path = os.path.join(os.getenv("HOME"), ".config", "yt-fts")
+        if not os.path.exists(config_path):
+            return None
+        else:
+            return config_path
+
     return None
 
 
@@ -30,15 +30,15 @@ def make_config_dir() -> str | None:
     platform = sys.platform
 
     try:
-        if platform == 'win32':
-            config_path = os.path.join(os.getenv('APPDATA'), 'yt-fts')
+        if platform == "win32":
+            config_path = os.path.join(os.getenv("APPDATA"), "yt-fts")
             # check if config dir exists
             if not os.path.exists(config_path):
                 os.mkdir(config_path)
                 return config_path
-        
-        if platform == 'darwin' or platform == 'linux':
-            config_path = os.path.join(os.getenv('HOME'), '.config', 'yt-fts')
+
+        if platform == "darwin" or platform == "linux":
+            config_path = os.path.join(os.getenv("HOME"), ".config", "yt-fts")
             # check if config dir exists
             if not os.path.exists(config_path):
                 os.mkdir(config_path)
@@ -57,7 +57,6 @@ def get_db_path() -> str:
 
     config_path = get_config_path()
     if config_path is None:
-
         config_path = make_config_dir()
 
         # if config path is still none, that means we can't make a config path
@@ -65,10 +64,10 @@ def get_db_path() -> str:
         if config_path is None:
             print("unable to make config path, using current directory")
             return "subtitles.db"
-        
+
     platform = sys.platform
 
-    if platform == 'win32':
+    if platform == "win32":
         db_path = f"{config_path}/subtitles.db"
 
         if not os.path.exists(db_path):
@@ -76,23 +75,22 @@ def get_db_path() -> str:
             make_db(db_path)
             return db_path
         else:
-            return db_path 
+            return db_path
 
-    if platform == 'darwin' or platform == 'linux':
+    if platform == "darwin" or platform == "linux":
         db_path = f"{config_path}/subtitles.db"
         if not os.path.exists(db_path):
             print("db path not found, making new db")
             make_db(db_path)
-            return db_path 
+            return db_path
         else:
-            return db_path 
-    
+            return db_path
+
     print("db path not found, using current directory")
-    return "subtitles.db" 
+    return "subtitles.db"
 
 
 def get_or_make_chroma_path() -> str:
-
     config_path = get_config_path()
 
     if config_path is None:
@@ -101,7 +99,7 @@ def get_or_make_chroma_path() -> str:
         if config_path is None:
             print("unable to make config path, using current directory")
             return os.path.join(os.getcwd(), "chroma")
-    
+
     chroma_path = os.path.join(config_path, "chroma")
 
     if not os.path.exists(chroma_path):
@@ -113,5 +111,6 @@ def get_or_make_chroma_path() -> str:
 
 def get_chroma_client() -> ClientAPI:
     chroma_path = get_or_make_chroma_path()
-    return chromadb.PersistentClient(path=chroma_path, 
-                                     settings=Settings(anonymized_telemetry=False))
+    return chromadb.PersistentClient(
+        path=chroma_path, settings=Settings(anonymized_telemetry=False)
+    )

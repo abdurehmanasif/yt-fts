@@ -1,5 +1,4 @@
 import chromadb
-import sys
 from openai import OpenAI
 from yt_fts.get_embeddings import get_embedding
 from yt_fts.config import get_or_make_chroma_path
@@ -7,14 +6,16 @@ from yt_fts.utils import get_model_config, time_to_secs
 from yt_fts.db_utils import get_channel_name_from_video_id, get_title_from_db
 from pprint import pprint
 
+
 def main():
-    chroma_path = get_or_make_chroma_path() 
+    chroma_path = get_or_make_chroma_path()
     view_collections(chroma_path)
     # search = "nural networks"
     # search_collections(chroma_path, search)
 
     # view_by_channel_id("")
     # delete_stuff()
+
 
 def view_collections(chroma_path):
     chroma_client = chromadb.PersistentClient(path=chroma_path)
@@ -29,7 +30,6 @@ def view_by_channel_id(channel_id):
 
     collection = chroma_client.get_collection(name="subEmbeddings")
 
-
     # collection.get({
     #     include: [ "documents" ]
     # })
@@ -38,9 +38,8 @@ def view_by_channel_id(channel_id):
     #     query_texts=["networks"],
     #     n_results=5,
     #     where={"channel_id": channel_id})
-    
-    # pprint(chroma_res)
 
+    # pprint(chroma_res)
 
 
 def delete_stuff():
@@ -48,18 +47,18 @@ def delete_stuff():
     chroma_client = chromadb.PersistentClient(path=chroma_path)
     collection = chroma_client.get_collection(name="subEmbeddings")
 
-    collection.delete(
-        where={"channel_id": "UCF0ZSm2AmSkJ2b2sLMlgLFg"}
-    )
+    collection.delete(where={"channel_id": "UCF0ZSm2AmSkJ2b2sLMlgLFg"})
+
 
 def search_collections(chroma_path, text):
     chroma_client = chromadb.PersistentClient(path=chroma_path)
     collection = chroma_client.get_collection(name="subEmbeddings")
 
     model = get_model_config()
-    openai_client = OpenAI(api_key=model['api_key'], base_url=model['base_url'])
-    search_embedding = next(get_embedding([text], model['embedding_model'], openai_client))
-
+    openai_client = OpenAI(api_key=model["api_key"], base_url=model["base_url"])
+    search_embedding = next(
+        get_embedding([text], model["embedding_model"], openai_client)
+    )
 
     chroma_res = collection.query(
         query_embeddings=[search_embedding],
@@ -85,7 +84,7 @@ def search_collections(chroma_path, text):
         match = {
             "distance": distance,
             "channel_name": channel_name,
-            "channel_id": channel_id, 
+            "channel_id": channel_id,
             "video_title": title,
             "subs": text,
             "start_time": start_time,
